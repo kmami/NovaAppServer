@@ -1,0 +1,129 @@
+<!DOCTYPE html> 
+<html lang="fr">
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="Content-type" content="text/html; charset=UTF-8" />
+		<title>TEST DE CONNEXION</title>
+		<script src="js/jquery/jquery-1.6.4.js"></script>
+<!--		<script src="js/crypto/crypto-sha256/crypto-sha256.js"></script>-->
+    	<script src="js/novaappserver.js"></script>		
+		<script src="js/jquery/jquery.mobile-1.0.min.js"></script>
+		<link rel="stylesheet"  href="js/jquery/jquery.mobile-1.0.min.css" />  
+<!--		<script src="js/crypto.pack.js"></script>-->
+
+    </head>
+    	
+	<body>
+		<div data-role="page">
+			<div data-role="header">
+				<h1>Test novaapp librairie javascript</h1>
+            </div><!-- /Entete de la page -->
+ 
+            <div data-role="content">
+				<div id="message-json" style="font-size: 18px; color:blue;">Message json</div>	
+
+ 
+            <div data-role="footer" data-position="fixed">
+                <h4>&copy; <a href="http://www.novaxel.com" title="">Novaxel</a> 2012</h4>
+            </div><!-- /Pied de page -->
+ 
+		</div><!-- /Page Login -->
+		
+		
+	<script>
+	// Instanciation d'un objet novaappserver
+	jQuery(document).ready(function() {
+
+
+		// Doit être appelé au moins sur la page principale afin de vérifier que l'environnement nécessaire à la librairie soit cohérent
+		try {
+			// Vérification de l'environnement au chargement de cette librairie...
+			novaApp.envOk();
+		}
+		catch (err) {
+			alert("Erreur lors du chargement de la librairie novaAppserver : " + err.message);
+			throw err;
+		}
+			
+
+		jQuery("#message-json").html("<h2>Exemple middleware noavaappserver</h2>");
+
+		jQuery("#message-json").append("<h3>Instanciation d'un objet novaApp.domain (synchrone)</h3>");
+
+		if (novaApp.DEBUG) { // Gestion des erreurs "en live"
+			var instDomNova = new novaApp.domain("admin","ciel");
+		} else {
+			try {
+				var instDomNova = new novaApp.domain("admin","ciel");
+			}
+			catch (err) {
+				alert(err.message);
+				alert(err.novaErr);
+			}
+		}
+
+		jQuery("#message-json").append("<p>instDomNova.login : " + instDomNova.login + "</p>");
+		jQuery("#message-json").append("<p>instDomNova.session : " + instDomNova.session + "</p>");
+		jQuery("#message-json").append("<p>novaApp.getVersion() : " + novaApp.getVersion() + "</p>");
+
+		jQuery("#message-json").append("<h3>Fin instanciation d'un objet novaApp.domain (synchrone)</h3>");
+
+		jQuery("#message-json").append("<h3>Autres requêtes JSON asynchrones</h3>");
+
+		instDomNova.getDBDom_infos(
+			function(ret,data) {
+				if (ret) {
+					jQuery("#message-json").append("<p>getDBDom_infos: <br />" + novaApp.jsonToString(data) + "</p>");
+				} else {
+					jQuery("#message-json").append("<p>Erreur suivante lors de la requête getDBDom_infos: " + data.message  + "<br />" + data.novaErr + "</p>");
+				}
+			}
+		);
+
+		instDomNova.getLogLast100(
+			function(ret,data) {
+				if (ret) {
+					jQuery("#message-json").append("<p>getLogLast100 :<br />" + novaApp.jsonToString(data) + "</p>");
+			} else {
+				jQuery("#message-json").append("<p>Erreur suivante lors de la requête getLogLast100 : " + data.message + "<br />" + data.novaErr + "</p>");
+			}
+			});
+
+		jQuery("#message-json").append("Lancement du test de timeout (le résultat devrait s'afficher beaucoup plus tard)");
+		instDomNova.testtimeout(
+			function(ret,data) {
+				if (ret) {
+					jQuery("#message-json").append("<p>testtimeout :<br />" + novaApp.jsonToString(data) + "</p>");
+			} else {
+				jQuery("#message-json").append("<p>Erreur suivante lors de la requête testtimeout :<br />Message \"humain\" : " + data.message + "<br />Message technique : " + data.novaErr + "</p>");
+			}
+			});
+
+		instDomNova.testErr404(
+			function(ret,data) {
+				if (ret) {
+					jQuery("#message-json").append("<p>testErr404 :<br />" + novaApp.jsonToString(data) + "</p>");
+			} else {
+				jQuery("#message-json").append("<p>Erreur suivante lors de la requête testErr404 :<br />Message \"humain\" : " + data.message + "<br />Message technique : " + data.novaErr + "</p>");
+			}
+			});
+
+		instDomNova.testErr500(
+			function(ret,data) {
+				if (ret) {
+					jQuery("#message-json").append("<p>testErr500 :<br />" + novaApp.jsonToString(data) + "</p>");
+			} else {
+				jQuery("#message-json").append("<p>Erreur suivante lors de la requête testErr500 :<br />Message \"humain\" : " + data.message + "<br />Message technique : " + data.novaErr + "</p>");
+			}
+			});
+
+
+
+		jQuery("#message-json").append("<h2>Fin des tests (doit apparaitre sur le navigateur bien avant les autres résultats pour cause de flux JSON asynchrones)</h2>");
+
+	});
+	</script>	
+	
+	</body>
+</html>
+
