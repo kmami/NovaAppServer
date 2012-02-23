@@ -20,7 +20,7 @@ if (typeof novaApp == "undefined" ) {
 	// Tableau des librairies complémentaires à charger
 	// TODO: traiter des fichier compactés si noDEBUG à terme...
 	var SCRIPTS_JS = new Array();
-	SCRIPTS_JS['SHA256'] = Array('js/crypto/crypto-sha256/crypto-sha256.js','Support de hash SHA256','','Crypto.SHA256(\'test\')');
+	SCRIPTS_JS['SHA256'] = Array('js/crypto/cryptosha256/cryptosha256.js','Support de hash SHA256','','Crypto.SHA256(\'test\')');
 	SCRIPTS_JS['JSON'] = Array('js/json2.js','Support des fonctions JSON sur les navigateurs obsolètes','JSON','JSON.stringify(\'test\')');
 	
 
