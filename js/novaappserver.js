@@ -100,6 +100,7 @@ if (typeof novaApp == "undefined" ) {
 			jQuery.ajaxSetup({async: false});
 		//	alert(jQuery.ajaxSetup.cache)
 			
+			alert('test');
 			jQuery.ajaxSetup({cache: true});
 			if (window.navigator.standalone) jQuery.ajaxSetup({isLocal:true});
 			
