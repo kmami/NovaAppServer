@@ -12,17 +12,27 @@ if (typeof novaApp == "undefined" ) {
 
 (function () {
  
-	var _version = 1;
+	novaApp.version = 1;
 	
 	// Version min. de jQuery requise (privée)
 	var VER_JQ_MIN =  '1.6';
 	
 	// Tableau des librairies complémentaires à charger
 	// TODO: traiter des fichier compactés si noDEBUG à terme...
-	var SCRIPTS_JS = new Array();
-	SCRIPTS_JS['SHA256'] = Array('js/crypto/crypto-sha256/crypto-sha256.js','Support de hash SHA256','','Crypto.SHA256(\'test\')');
-	SCRIPTS_JS['JSON'] = Array('js/json2.js','Support des fonctions JSON sur les navigateurs obsolètes','JSON','JSON.stringify(\'test\')');
-	
+	var SCRIPTS_JS = new Array(
+		Array('SHA256','js/crypto/crypto-sha256/crypto-sha256.js','Support de hash SHA256','Crypto.SHA256(\'test\')'),
+		Array('JSON','js/json2.js','Support des fonctions JSON sur les navigateurs obsolètes','JSON.stringify(\'test\')')
+	);
+
+	// Tableau du format d'envoloppe JSON à tester en retour
+	// Ajout d'une couche d'abstract pour le cas où les libellés de structure (enveloppe JSON) changeraient...
+	var JSON_ENV = {
+		token: 'token',
+		rc: 'rc',
+		error: 'error',
+		msg: 'messages',
+		results: 'results'
+	};
 
 	/* 
 	 * Propriétées publiques
@@ -32,17 +42,19 @@ if (typeof novaApp == "undefined" ) {
 
 	// url serveur novaappserver :
 	//const NAS_URL = 'http://dev.gedweb.fr:8080';
-	novaApp.NAS_URL = 'http://dev.gedweb.fr:8080/test_json.php';
+	novaApp.NAS_URL = 'http://dev.gedweb.fr:8000';
 	
-	// uri gestion domain (à concaténer avec NAS_URL)
-	novaApp.NAS_DOMAIN = '/domain';
+
+	// Liste des URI (chemin SUR serveur)
+	novaApp.NAS_URIS = {
+		// uri gestion domain (à concaténer avec NAS_URL)
+		DOMAIN: novaApp.NAS_URL + '/domain',
+		// uri gestion user (à concaténer avec NAS_URL)
+		USER: novaApp.NAS_URL + '/user',
+		// uri service (à concaténer avec NAS_URL)
+		SERVICE : novaApp.NAS_URL + '/service'
+	};
 	
-	// uri gestion owner (à concaténer avec NAS_URL)
-	// const nas_owner = '/owner';
-	
-	// uri gestion user (à concaténer avec NAS_URL)
-	novaApp.NAS_USER = '/user';
-		
 	// Type de session possible (connection à l'API serveur)
 	novaApp.SESSION_TYPE = [ 'domain','user'];
 
@@ -52,12 +64,11 @@ if (typeof novaApp == "undefined" ) {
 	/*
 	 * Méthodes publiques
 	 */
-	
-	novaApp.getVersion = function() {
-		return (_version);
-	};
-	
-	// A appeler au chargement, on vérifie que jQuery soit présent et dans une version supérieure à la version min paramétrée
+		
+	/*
+	 * A appeler au chargement, on vérifie l'environnement d'exploitaiton...
+	 * Attention, ici on lève des erreurs (try/catch chez l'appelant)
+	 */
 	novaApp.envOk = function () {
 		try {
 			// jQuery présent ?
@@ -83,50 +94,65 @@ if (typeof novaApp == "undefined" ) {
 		catch(err) {
 			alert(err.name + " : " + err.message);
 			novaApp.LogDEBUG(err.name + " : " + err.message);
-			
 		};
 		
+		
 		// Chargement des librairies JS complémentaires à cette librairie
-		for (var lib in SCRIPTS_JS) {
-			// Si un test de chargemement est présent, on le lance avant d'essayer de charger (typiquement JSON par exemple, non supporté par IE <8...);
-			if (SCRIPTS_JS[lib][2] !='') {
-				try {
-					eval(SCRIPTS_JS[lib][2]);
-					continue; // Eval est Ok, on passe à la libraireis suivante...
-				}
-				catch (err) {}
-			}
-			// Tentative de chargement du script par jQuery.getScript()...
-			jQuery.ajaxSetup({async: false});
-		//	alert(jQuery.ajaxSetup.cache)
-			
-			alert('test');
-			jQuery.ajaxSetup({cache: true});
-			if (window.navigator.standalone) jQuery.ajaxSetup({isLocal:true});
-			
-			
-			jQuery.getScript(SCRIPTS_JS[lib][0])
-				.done(function() {
-					novaApp.LogDEBUG('librairie ' + SCRIPTS_JS[lib][1] + ' chargée')
-					// TODO: Test du chargement
+		if (SCRIPTS_JS.length > 0) { 
+			jQuery.ajaxSetup({
+				cache: true, // Ne pas modifier, manifestement certaines tablettes n'apprécient pas qu'i n'y ait pas de cache (cf. recherche KM sur Galaxy Tab android 3.X)
+				async: false
+			});
+			for (var i=0;i<SCRIPTS_JS.length;i++) {
+				// On effectue toujours un test de préchargement, de manière à détecter un chargement initialisé par ailleurs (entête HTML <script...>)
+				if (SCRIPTS_JS[i][3] !='') {
 					try {
-						eval(SCRIPTS_JS[lib][3]);
-						novaApp.LogDEBUG('test du chargement positif à l\'aide de l\'instruction : ' + SCRIPTS_JS[lib][3]);
+						eval(SCRIPTS_JS[i][3]);
+						continue; // Eval est Ok, on passe à la libraires suivante...
 					}
-					catch(err) {
-						novaApp.LogDEBUG(err.name + " : " + err.message + 'lors du test de chargement de la librairie : ' + lib + ' : ' + SCRIPTS_JS[lib][1] );
-						throw new Error('La librairie "' + SCRIPTS_JS[lib][1] + '" - (' + SCRIPTS_JS[lib][0] + ') a bien été chargée, mais elle est inexploitable');
-					}
+					catch (err) {}
+				}
+				// Tentative de chargement du script par jQuery.getScript()...
+				jQuery.getScript(SCRIPTS_JS[i][1])
+				.done(function() {
+						novaApp.LogDEBUG('librairie ' + SCRIPTS_JS[i][0] + ' chargée')
+						try {
+							eval(SCRIPTS_JS[i][3]);
+							novaApp.LogDEBUG('test du chargement positif à l\'aide de l\'instruction : ' + SCRIPTS_JS[i][3]);
+						}
+						catch(err) {
+							novaApp.LogDEBUG(err.name + " : " + err.message + 'lors du test de chargement de la librairie : ' + SCRIPTS_JS[i][0] + ' : ' + SCRIPTS_JS[i][2] );
+							throw new Error('La librairie "' + SCRIPTS_JS[i][0] + '" - (' + SCRIPTS_JS[i][1] + ') a bien été chargée, mais elle est inexploitable');
+						}
 						
 				})
 				.fail(function(jqxhr, settings, exception) {
-					novaApp.LogDEBUG('librairie ' + SCRIPTS_JS[lib][1] + ' non chargée');
-					// TODO: traitement erreur
-					throw new Error('librairie ' + SCRIPTS_JS[lib][1] + ' non chargée');
+						novaApp.LogDEBUG('librairie ' + SCRIPTS_JS[i][1] + ' non chargée');
+						throw new Error('librairie ' + SCRIPTS_JS[i][1] + ' non chargée');
 				});
-				
-		};
-			
+			}
+		}
+
+		// TODO : Cookies actif (vérifier si applicable pour "httponly")
+		if (! navigator.cookieEnabled) {
+			throw new Error('Les cookies doivent être activés pour utiliser cette application');
+		}
+
+		// ping server (le ping est anonyme sur le serveur)
+		// TODO : désactiver pour tests sur Apache....
+/*		var ret = novaApp.getDataNAS(novaApp.NAS_URIS.SERVICE + '/ping', {},{async: false});
+		ret.success(function(data, status, jqXHR) {
+			if (jqXHR.hasOwnProperty('errJSON')) {
+				novaApp.LogDEBUG('Erreur dans le Flux : ping KO : ' + jqXHR.errJSON.novaErr);
+				throw new Error('Le serveur a renvoyé l\'erreur suivante lors de la connexion de test : "' + jqXHR.errJSON.message + '"');
+			} else {
+				novaApp.LogDEBUG('Ping du serveur OK');
+			}
+		});
+		ret.error(function(jqXHR) {
+			novaApp.LogDEBUG('Ping du serveur KO : ' + jqXHR.errJSON.novaErr);
+			throw new Error('L\'erreur suivante s\'est produite lors de la connexion de test au serveur : "' + jqXHR.errJSON.message + '"');
+		});*/
 		
 	}; // Fin novaApp.envOk
 	
@@ -154,7 +180,15 @@ if (typeof novaApp == "undefined" ) {
 		return JSON.stringify(objJson);
 	}; // Fin novaApp.jsonToString
 	
+
+	/* 
+	 * function de "simplification" (en mode asynchrone) de login sur le domain
+	 */
+	novaApp.domainlogin = function(login, password, callback) {
+		var newDomainUser = new novaApp.domain(login, password, callback);
+	} // fin novaApp.domainlogin
 	
+
 	
 	/* 
 	 * Renvoi un flux JSON 
@@ -176,21 +210,20 @@ if (typeof novaApp == "undefined" ) {
 		throw jqXHR.errJSON;
 	 });
 	 * 
-	 * TODO : Traiter JSONP (problème de flux asynchrone non possible actuellement)
+	 * TODO :	Traiter JSONP (problème de flux asynchrone non possible actuellement)
+	 * TODO :	Traiter un encodage compatible JSON *en envoi* (voir http://stackoverflow.com/questions/1255948/post-data-in-json-format-with-javascript par exemple)
+	 * 			Le serveur peut attendre une structure plus cmplexe qu'une association de premier niveau (ie. encapsulation de datas...)
 	 */
 	novaApp.getDataNAS= function(target, param, optajax) {
 		// Valeurs par défaut pouvant être écrasées par optajax
 		var ajaxDefault = {
 			dataType: 'json', // Si nous sommes sur le même domaine, jQuery bascule "automatiquement" en JSON
 			type: 'POST',
-			async: true, // Attention, si async: false le timeout n'est pas pris en compte...
-			cache: false, //C'est le cas par défaut pour JSONP
+			async: true, 
+			cache: false, // En complément car le serveur envoi normalement des entêtes "no-store"
 			timeout: novaApp.HTTP_REQ_TIMEOUT, // 5 secondes par défaut
-			//crossDomain: true, // TODO : Vérifier que ce ne soit pas redondant avec JSONP ??? ==> Attention, il semble que cela rende la requête JSON asynchrone...
-			//jsonpCallback: xxx, // Normalement inutile...
 			//scriptCharset: ..., // À voir éventuellement 
-		
-		
+
 			// Traitement des erreurs réseaux uniquement (les erreurs applicatives osnt traitées par la function success et ces dépendantes)
 			error: function(jqXHR, textStatus) {
 				/*
@@ -202,33 +235,88 @@ if (typeof novaApp == "undefined" ) {
 				errJSON.novaErr = jqXHR.statusText + ' lors de l\'appel de "' + this.url + '" (status jqXHR : ' + jqXHR.readyState + ')';
 				switch (jqXHR.readyState) {
 					case 0:	// The request is not initialized - Typiquement timeout
-							errJSON.message = 'Le service ne répond pas (machine inaccessible, ou serveur WEB ne répond pas, etc.)';
-							break;
+						errJSON.message = 'Le service ne répond pas (machine inaccessible, ou serveur WEB ne répond pas, etc.)';
+						break;
 					case 1:	// The request has been set up - NA dans ce contexte ???
-							errJSON.message = 'Une erreur inconnue (et non traitée) a eu lieu';
-							break;
+						errJSON.message = 'Une erreur inconnue (et non traitée) a eu lieu';
+						break;
 					case 2:	// The request has been sent - NA dans ce contexte ???
-							errJSON.message = 'Une erreur inconnue (et non traitée) a eu lieu';
-							break;
+						errJSON.message = 'Une erreur inconnue (et non traitée) a eu lieu';
+						break;
 					case 3: // The request is in process - NA dans ce contexte ???
-							errJSON.message = 'Une erreur inconnue (et non traitée) a eu lieu';
-							break;
+						errJSON.message = 'Une erreur inconnue (et non traitée) a eu lieu';
+						break;
 					case 4:	 // The request is complete - Typiquement un erreur HTTP (serveur accessible mais erreur de traitement 40X/50X, etc...)
-						errJSON.message = 'Le service répond mais les données ne peuvent pas être récupérées suite à une erreur de traitement de données sur ce service';
+						errJSON.message = 'Le serveur répond mais les données ne peuvent pas être récupérées suite à une erreur de traitement de données sur ce service';
 						errJSON.novaErr = jqXHR.statusText + ' lors de l\'appel de "' + this.url + '" (status jqXHR : ' + jqXHR.readyState + ' ; erreur HTTP : ' + jqXHR.status + ')';
 						break;
 				}
-				
+	 
 				// Ajout de l'objet errJSON à jqXHR et récupérable dans une fonction différée
 				jqXHR.errJSON = errJSON;
 				novaApp.LogDEBUG('Requête JSON sur "' + target + '" KO : ' + errJSON.novaErr);
 			},
-			
-			success: function(data) {
-				// Datas vide ==> anormal...
+ 
+			/* Les datas sont bien renvoyées par le serveur...
+			 * Ici, il peut y avoir plusieurs problèmes :
+			 * - Enveloppe incorrecte (le serveur est censé nous renvoyer toujours le même format d'enveloppe, ie toujours les mêmes structures, dans le flux...)
+			 * - rc != 0 ==> Erreur sur le serveur (de tout type)
+			 * 	==> strcuture "error" doit ête remplie dans ce cas...
+			 */
+			success: function(data, textStatus, jqXHR) {
+				/* Ici on doit traiter toutes les erreurs communes aux différents appels
+				* On doit aussi effectuer des actions sanitaires
+				*/
+				novaApp.LogDEBUG('Requête JSON sur "' + target + '" retour OK ; traitement des datas');
+				novaApp.LogDEBUG('Flux JSON retourné : ' + novaApp.jsonToString(data));
 				
-				// TODO : traiter les erreurs applicatives et filtrer les datas (injections) renvoyées par le serveur d'app...
-				novaApp.LogDEBUG('Requête JSON sur "' + target + '" OK');
+				// Flux JSON vide ==> anormal...(le serveur doit renvoyer la même enveloppe)
+				if (jQuery.isEmptyObject(data)) { // TODO : vérifier ça...
+					var errFluxJSON = new Error();
+					errFluxJSON.message = 'Le serveur a répondu mais le format de cette réponse est incorrect';
+					errFluxJSON.novaErr = 'Enveloppe du flux JSON vide';
+					jqXHR.errJSON=errFluxJSON;
+					return false;
+					
+				}; 
+					
+				// Format Flux non respecté (toutes les structures doivent être présentes dans l'enveloppe)
+				/* Nous devons toujours recevoir un flux du type suivant :
+				 * {
+				 * 	"token": "",
+				 * 	"rc": 0/1,
+				 * 	"error" : {},
+				 * 	"messages": [],
+				 * 	"results": {}
+				 * }
+				 */
+				for (var i in JSON_ENV) {
+					// Correspondance => une clé (structure) doit exister dans le flux pour chaque élément dans le tableau de desctiption d'enveloppe
+					try {
+						novaApp.LogDEBUG(JSON_ENV[i] + ' : ' + data[JSON_ENV[i]]);
+					}
+					catch (err) {
+						//Le flux ne correspond pas à l'enveloppe attendu
+						var errFluxJSON = new Error();
+						errFluxJSON.message = 'Les données retournées par le serveur ne correpondent pas à celles attendues';
+						errFluxJSON.novaErr = 'La structure "' + JSON_ENV[i] + '" n\'apparait pas dans le flux reçu (erreur d\'enveloppe)';
+						jqXHR.errJSON=errFluxJSON;
+						return false;
+					}
+				}
+				
+				// Retour de flux en erreur
+				if (data[JSON_ENV['rc']] != 0 ) {
+					novaApp.LogDEBUG('retour Flux JSON en erreur : ' + data[JSON_ENV['error']]);
+					var errFluxJSON = new Error();
+					errFluxJSON.message = 'Le serveur a retourné l\'erreur suivante lors de la requête : "' + data[JSON_ENV['error']].message + '"';
+					errFluxJSON.novaErr = 'Retour en erreur ; code : ' + data[JSON_ENV['error']].code + ' ; message : "' + data[JSON_ENV['error']].message + '"';
+					jqXHR.errJSON=errFluxJSON;
+					return false;
+				}
+				
+				// TODO : filtrer les datas (injections) renvoyées par le serveur d'app...
+				// Faire confiance à jQuery.parseJSON  ? Celui-ci utilise les fonctionnalités du browser si présente ou l'implémentation de Crofford dans le cas contraire...
 			}
 			
 		};
@@ -237,6 +325,7 @@ if (typeof novaApp == "undefined" ) {
 			// merge des options passées
 			jQuery.extend(ajaxDefault,optajax);
 		}
+		
 		jQuery.ajaxSetup(ajaxDefault);
 			
 		var ret = jQuery.ajax({
@@ -248,27 +337,33 @@ if (typeof novaApp == "undefined" ) {
 		//});
 	};// Fin novaApp.getDataNAS
 
-	/*
-	 * Classe mère 
-	 */
+
+/*
+ * Classe mère 
+ */
 
 	novaApp.novaAppGen = novaApp.novaAppGen || {}; // Sous-namespace dédié aux fonctionnalités domain
-	
+
 	// Constructeur de cette classe
 	novaApp.novaAppGen = function(login,password, typeSession) {
 		// Si aucun argument n'est passé (compil), on ne fait rien
 		if( arguments.length ) { this.getReady(login,password, typeSession); }
 	};
 
-	novaApp.novaAppGen.prototype.getReady = function (_self, login,password, typeSession) {
+	/* 
+	 * Constructeur global (ie domain + GED)
+	 */
+	novaApp.novaAppGen.prototype.getReady = function (_self, login,password, typeSession, callback) {
 		if (
 			typeof login == 'undefined' || 
 			typeof password == 'undefined' 
-			|| novaApp.SESSION_TYPE.indexOf(typeSession.trim()) == -1 
+			|| novaApp.SESSION_TYPE.indexOf(jQuery.trim(typeSession)) == -1 
 		) { // Paramètres incorrects
 			throw new Error('Vous devez vous authentifier pour utiliser une instance de cet objet');
-			//return(null);
+			
 		} else {
+			// mode async ?
+			async = typeof callback == 'function' ? true : false;
 			// Demande d'authentification sur le serveur...
 			login = jQuery.trim(login);
 			password = jQuery.trim(password);
@@ -276,52 +371,68 @@ if (typeof novaApp == "undefined" ) {
 			
 			// cryptage du mot de passe
 			var password = Crypto.SHA256(password);
-
-			novaApp.LogDEBUG('Demande authentification sur "' + novaApp.NAS_URL + '" pour l\'utilisateur "' + login + '" et le mot de passe "' + password + '"');
-			novaApp.LogDEBUG('Cryptage direct de password : ' + Crypto.SHA256("ciel"));
-				
 			
-			var newNovaUser= novaApp.getDataNAS(novaApp.NAS_URL, {login: login,password: password},{async: false});
-			newNovaUser.success(function (data) {
-				if (data.toString == "") { // Objet vide, erreur d'authentification
-					throw new Error ("Authentification impossible");
-				} else { // Session serveur Ok
-					if (novaApp.DEBUG) {novaApp.logCons('Authentification OK pour "' + login + '" ; instanciation de l\'objet')};
-					_self.login = login;
-					//_self.password = password.trim();
-					_self.typeSession=typeSession;
-					// TODO : Voir comment récupérer un ID Session depuis le serveur et se le repasser...
-					_self.session = jQuery.trim(data.id);
-					novaApp.LogDEBUG("Session définie : " + _self.session);
+			novaApp.LogDEBUG('Demande authentification pour l\'utilisateur "' + login + '" et le mot de passe "' + password + '"');
+			//novaApp.LogDEBUG('Cryptage direct de password : ' + Crypto.SHA256(password));
+			
+			
+			var newNovaUser= novaApp.getDataNAS(novaApp.NAS_URIS.DOMAIN + "/login", {user: login,password: password},{async: async});
+			
+			newNovaUser.success(function (data, textStatus, jqXHR) {
+				// Présence d'erreur dans les datas retournées ?
+				if (jqXHR.hasOwnProperty('errJSON')) {
+					novaApp.LogDEBUG('Erreur dans le Flux : Authentification KO pour "' + login + '" ; déclenchement Erreur');
+					// On lève une erreur car on ne doit pas pouvoir passer silencieusement une instanciation erronée (à traiter par l'appelant avec "try/catch")
+					throw jqXHR.errJSON;
 				}
+				
+				// Si nous arrivons ici, c'est que le flux JSON est considéré correct et nettoyé
+				// TODO Stockage des valeurs de session
+				_self.login = login;
+				_self.typeSession=typeSession;
+				_self.session = jQuery.trim(data[JSON_ENV['token']]);
+				// TODO : non implémenté par JMB...
+				//_self.id=jQuery.trim(data[JSON_ENV['results']].id;
+				novaApp.LogDEBUG("Session définie : " + _self.session);
+				if (typeof callback == 'function') {callback(_self)};
 			});
+			
 			newNovaUser.error(function (jqXHR, textStatus) {
-				novaApp.LogDEBUG('Authentification KO pour "' + 'admin' + '" ; déclenchement Erreur');
+				novaApp.LogDEBUG('Authentification KO pour "' + login + '" ; déclenchement Erreur');
+				// On lève une erreur car on ne doit pas pouvoir passer silencieusement une instanciation erronée (à traiter par l'appelant avec "try/catch")
 				throw jqXHR.errJSON;
 			});
-
+				
 		}
 	};
 
-	novaApp.domain = novaApp.domain || {}; // Sous-namespace dédié aux fonctionnalités domain
 
 	/*
 	* Classe fille spécifique aux fonctionnalités "domaine"
-	* Extension de la lasse mère "novaAppGlobal"
+	* Extension de la classe mère "novaAppGlobal"
+	novaApp.domain = novaApp.domain || {}; // Sous-namespace dédié aux fonctionnalités domain
 	*/
-	novaApp.domain =  function(login, password) {
-		if( arguments.length ) { this.getReady(login,password); }
+	
+	novaApp.domain = novaApp.domain || {}; // Sous-namespace dédié aux fonctionnalités domain
+
+	// Constructeur
+	novaApp.domain =  function(login, password, callback) {
+		if( arguments.length ) { this.getReady(login, password, callback); }
 	}
 
 	novaApp.domain.prototype = new novaApp.novaAppGen();
 	novaApp.domain.prototype.constructor = novaApp.domain;
-	
- 
-	novaApp.domain.prototype.getReady =  function(login, password) {
+
+
+	novaApp.domain.prototype.getReady =  function(login, password, callback) {
+		// Appel du constructeur parent
 		this.tempReady = novaApp.novaAppGen.prototype.getReady;
-		this.tempReady(this,login, password,'domain');
+		this.tempReady(this,login, password,'domain', callback);
 	}
 	
+	/* 
+	 * Vérification d'une session en cours... Doit être appelée avant chaque requête sur le serveur (pas de session ==> pas de requêtes)
+	 */
 	novaApp.domain.prototype.SessionOk = function(callback) {
 		if (typeof this.session === "undefined" || this.session.toString() == "" ) {
 			callback(false, {message: "La session novaxel n'est pas initiée", novaErr: "Session Novaxel inexistante (authentification erronée ou non effectuée)"});
@@ -330,36 +441,60 @@ if (typeof novaApp == "undefined" ) {
 			return true;
 		}
 	}
- 
+		
+
+	// Voir JMB pour savoir si encore fonctionnelle ???
 	novaApp.domain.prototype.getDBDom_infos = function(callback) {
 		if (! this.SessionOk(callback)) { return false} ;
-
-		//url = novaApp.NAS_URL + novaApp.NAS_DOMAIN + '/dbinfos';
+				
+		url = novaApp.NAS_URIS.SERVICE + '/dbinfos';
 		novaApp.LogDEBUG('Appel de getDBDom_infos');
-		var ret = novaApp.getDataNAS(novaApp.NAS_URL,{Sess_Id: this.session, type: "obj_assoc"});
-		ret.success(function(data, status, jqXHR) {callback(true, data)});
-		ret.error(function(jqXHR) {callback(false, jqXHR.errJSON)});
+		var ret = novaApp.getDataNAS(url,{token: this.session});
+		ret.success(function(data, status, jqXHR) {
+			callback(true, data[JSON_ENV['results']])
+		});
+		ret.error(function(jqXHR) {
+			callback(false, jqXHR.errJSON)
+		});
 	}
 	
 	/*
 	* Retourne un tableau des 100 dernières synchro (test JSON)
 	*/
+	// Voir JMB pour savoir si encore fonctionnelle ???
 	novaApp.domain.prototype.getLogLast100 = function(callback) {	// Test JsonP
 		if (! this.SessionOk(callback)) { return false} ;
- 
-		//url = NAS_URL + NAS_DOMAIN + '/logs_last_100';
+							
 		novaApp.LogDEBUG('Appel de getLogLast100');
-		var url = novaApp.NAS_URL;
+		var url = novaApp.NAS_URIS.SERVICE + '/logs_last_100';
 		
-		var ret = novaApp.getDataNAS(url,{Sess_Id: this.session, type: 'arr'});
-		ret.success(function(data, status, jqXHR) {callback(true,data)});
+		var ret = novaApp.getDataNAS(url,{token: this.session});
+		ret.success(function(data, status, jqXHR) {callback(true,data[JSON_ENV['results']])});
 		ret.error(function(jqXHR) {callback(false, jqXHR.errJSON)});
 	}
 	
+
+	/*
+	* Retourne la liste des bibliothèques d'un propriétaire
+	*/
+	novaApp.domain.prototype.getLibs = function(callback) {
+		if (! this.SessionOk(callback)) { return false} ;
+	
+		var url = novaApp.NAS_URIS.DOMAIN + '/getlibs';
+		novaApp.LogDEBUG('Appel de getlibs');
+		var ret = novaApp.getDataNAS(url,{token: this.session});
+		ret.success(function(data, status, jqXHR) {
+			callback(true, data[JSON_ENV['results']].libs)
+		});
+		ret.error(function(jqXHR) {
+			callback(false, jqXHR.errJSON)
+		});
+	}
+
 	novaApp.domain.prototype.testErr404 = function(callback) {
 		if (! this.SessionOk(callback)) { return false} ;
- 
-	novaApp.LogDEBUG('Appel de testErr404');
+					
+		novaApp.LogDEBUG('Appel de testErr404');
 		var ret = novaApp.getDataNAS('http://dev.gedweb.fr:8080/nopage/index.html',{Sess_Id: this.session, type: "obj_assoc"});
 		ret.success(function(data, status, jqXHR) {callback(true, data)});
 		ret.error(function(jqXHR) {callback(false, jqXHR.errJSON)});
@@ -372,7 +507,7 @@ if (typeof novaApp == "undefined" ) {
 		ret.success(function(data, status, jqXHR) {callback(true, data)});
 		ret.error(function(jqXHR) {callback(false, jqXHR.errJSON)});
 	}
- 
+	
 	
 	novaApp.domain.prototype.testErr500 = function(callback) {
 		if (! this.SessionOk(callback)) { return false} ;
@@ -381,21 +516,22 @@ if (typeof novaApp == "undefined" ) {
 		ret.success(function(data, status, jqXHR) {callback(true, data)});
 		ret.error(function(jqXHR) {callback(false, jqXHR.errJSON)});
 	}
+	
 
 
-// IE (no comment) < 9 ne supporte pas IndexOf...
-// Donc encore un vilain hack ==> IE Hell
-// voir : http://soledadpenades.com/2007/05/17/arrayindexof-in-internet-explorer/
-if(!Array.indexOf){
-	Array.prototype.indexOf = function(obj){
-		for(var i=0; i<this.length; i++){
-			if(this[i]==obj){
-				return i;
+	// IE (no comment) < 9 ne supporte pas IndexOf...
+	// Donc encore un vilain hack ==> IE Hell
+	// voir : http://soledadpenades.com/2007/05/17/arrayindexof-in-internet-explorer/
+	if(!Array.indexOf){
+		Array.prototype.indexOf = function(obj){
+			for(var i=0; i<this.length; i++){
+				if(this[i]==obj){
+					return i;
+				}
 			}
+			return -1;
 		}
-		return -1;
 	}
-}
 				
 }()); // Fin de novaApp
 

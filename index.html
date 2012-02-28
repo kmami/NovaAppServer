@@ -3,16 +3,16 @@
 	<head>
 		<meta charset="utf-8">
 		<meta http-equiv="Content-type" content="text/html; charset=UTF-8" />
-		<title>TEST DE CONNEXION</title>
-		<script src="js/jquery/jquery-1.6.4.js"></script>
+		<title>Test librairie javascript novaappserver</title>
+		<script src="js/jquery/jquery-1.6.4.js" type="text/javascript"></script>
 <!--		<script src="js/crypto/crypto-sha256/crypto-sha256.js"></script>-->
-    	<script src="js/novaappserver.js" charset="utf-8"></script>		
-		<script src="js/jquery/jquery.mobile-1.0.min.js"></script>
+    	<script src="js/novaappserver.js"  type="text/javascript"></script>		
+		<script src="js/jquery/jquery.mobile-1.0.min.js"  type="text/javascript"></script>
 		<link rel="stylesheet"  href="js/jquery/jquery.mobile-1.0.min.css" />  
 <!--		<script src="js/crypto.pack.js"></script>-->
 
     </head>
-    	
+	
 	<body>
 		<div data-role="page">
 			<div data-role="header">
@@ -41,46 +41,68 @@
 			novaApp.envOk();
 		}
 		catch (err) {
-			alert("Erreur lors du chargement de la librairie novaAppserver : " + err.message);
-			throw err;
+			alert("Cette application ne peut actuellement pas fonctionner pour la raison suivante : \"" + err.message + "\". Nous vous prions d'accepter toutes nos excuses.");
+			throw new Error; // Permet d'arréter complètement le script...
 		}
-			
 
 		jQuery("#message-json").html("<h2>Exemple middleware noavaappserver</h2>");
 
+		jQuery("#message-json").append("<h3>version novaApp : " + novaApp.version + "</h3>");
+
 		jQuery("#message-json").append("<h3>Instanciation d'un objet novaApp.domain (synchrone)</h3>");
 
-		if (novaApp.DEBUG) { // Gestion des erreurs "en live"
-			var instDomNova = new novaApp.domain("admin","ciel");
-		} else {
-			try {
-				var instDomNova = new novaApp.domain("admin","ciel");
-			}
-			catch (err) {
-				alert(err.message);
-				alert(err.novaErr);
-			}
+		// Méthode d'instanciation directe (synchrone)
+		try {
+			var instDomNovaSync = new novaApp.domain("SOLIDIA","S7N7C5");
+		}
+		catch (err) {
+			alert(err.message);
+			throw new Error; // Permet d'arréter complètement le script...
 		}
 
-		jQuery("#message-json").append("<p>instDomNova.login : " + instDomNova.login + "</p>");
-		jQuery("#message-json").append("<p>instDomNova.session : " + instDomNova.session + "</p>");
-		jQuery("#message-json").append("<p>novaApp.getVersion() : " + novaApp.getVersion() + "</p>");
-
+		jQuery("#message-json").append("<p>instDomNovaSync.login : " + instDomNovaSync.login + "</p>");
+		jQuery("#message-json").append("<p>instDomNovaSync.session : " + instDomNovaSync.session + "</p>");
 		jQuery("#message-json").append("<h3>Fin instanciation d'un objet novaApp.domain (synchrone)</h3>");
 
-		jQuery("#message-json").append("<h3>Autres requêtes JSON asynchrones</h3>");
+		// Méthode d'instanciation indirecte (asynchrone)
+		jQuery("#message-json").append("<h3>Instanciation d'un objet novaApp.domain (asynchrone) ==> L'affichage du résultat doit se trouver beaucoup plus bas...</h3>");
+		novaApp.domainlogin("SOLIDIA","S7N7C5",
+			function(instDomNovaAsync) { // La variable instDomNovaAsync n'est utilisable que à partir du moment où cette function est déclenchée...
+				jQuery("#message-json").append("<h3>L'objet novaApp.domain asynchrone a bien été créé...</h3>");
+				jQuery("#message-json").append("<p>instDomNovaAsync.login : " + instDomNovaAsync.login + "</p>");
+				jQuery("#message-json").append("<p>instDomNovaAsync.session : " + instDomNovaAsync.session + "</p>");
 
-		instDomNova.getDBDom_infos(
+				instDomNovaSync.getLibs( // Ne pas "sortir" ce traitement, sinon, objet non existant...
+					function(ret,data) {
+						jQuery("#message-json").append("<h3>Liste des biblilothèques pour l'objet asynchrone...</h3>");
+						if (ret) {
+							jQuery("#message-json").append("<h4>Résultats OK Requête getLibs (liste des bilbiothèques)</h4>");
+							jQuery("#message-json").append("<p>getLibs: <br />" + novaApp.jsonToString(data) + "</p>");
+						} else {
+							jQuery("#message-json").append("<h4>Résultats KO Requête getLibs (liste des bilbiothèques</h4>");
+							jQuery("#message-json").append("<p>Erreur suivante lors de la requête getLibs: " + data.message  + "<br />" + data.novaErr + "</p>");
+						}
+						jQuery("#message-json").append("<h3>Fin Liste des biblilothèques pour l'objet asynchrone...</h3>");
+					}
+				);
+
+			}
+		); // Fin de novaApp.domainlogin
+
+		jQuery("#message-json").append("<h3>Autres requêtes JSON asynchrones</h3>");
+		instDomNovaSync.getDBDom_infos(
 			function(ret,data) {
 				if (ret) {
+					jQuery("#message-json").append("<h4>Résultats OK Requête getDBDom_infos</h4>");
 					jQuery("#message-json").append("<p>getDBDom_infos: <br />" + novaApp.jsonToString(data) + "</p>");
 				} else {
+					jQuery("#message-json").append("<h4>Résultats KO Requête getDBDom_infos</h4>");
 					jQuery("#message-json").append("<p>Erreur suivante lors de la requête getDBDom_infos: " + data.message  + "<br />" + data.novaErr + "</p>");
 				}
 			}
 		);
 
-		instDomNova.getLogLast100(
+		instDomNovaSync.getLogLast100(
 			function(ret,data) {
 				if (ret) {
 					jQuery("#message-json").append("<p>getLogLast100 :<br />" + novaApp.jsonToString(data) + "</p>");
@@ -89,8 +111,8 @@
 			}
 			});
 
-		jQuery("#message-json").append("Lancement du test de timeout (le résultat devrait s'afficher beaucoup plus tard)");
-		instDomNova.testtimeout(
+		jQuery("#message-json").append("<h4>Lancement du test de timeout (le résultat devrait s'afficher beaucoup plus tard)</h4>");
+		instDomNovaSync.testtimeout(
 			function(ret,data) {
 				if (ret) {
 					jQuery("#message-json").append("<p>testtimeout :<br />" + novaApp.jsonToString(data) + "</p>");
@@ -99,7 +121,7 @@
 			}
 			});
 
-		instDomNova.testErr404(
+		instDomNovaSync.testErr404(
 			function(ret,data) {
 				if (ret) {
 					jQuery("#message-json").append("<p>testErr404 :<br />" + novaApp.jsonToString(data) + "</p>");
@@ -108,7 +130,7 @@
 			}
 			});
 
-		instDomNova.testErr500(
+		instDomNovaSync.testErr500(
 			function(ret,data) {
 				if (ret) {
 					jQuery("#message-json").append("<p>testErr500 :<br />" + novaApp.jsonToString(data) + "</p>");
