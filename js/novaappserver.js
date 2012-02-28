@@ -98,7 +98,12 @@ if (typeof novaApp == "undefined" ) {
 			}
 			// Tentative de chargement du script par jQuery.getScript()...
 			jQuery.ajaxSetup({async: false});
+		//	alert(jQuery.ajaxSetup.cache)
+			
 			jQuery.ajaxSetup({cache: true});
+			if (window.navigator.standalone) jQuery.ajaxSetup({isLocal:true});
+			
+			
 			jQuery.getScript(SCRIPTS_JS[lib][0])
 				.done(function() {
 					novaApp.LogDEBUG('librairie ' + SCRIPTS_JS[lib][1] + ' chargée')
