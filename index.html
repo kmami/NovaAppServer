@@ -3,12 +3,12 @@
 	<head>
 		<meta charset="utf-8">
 		<meta http-equiv="Content-type" content="text/html; charset=UTF-8" />
-		<title>Test librairie javascript novaappserver</title>
+		<title>Tests chargement dynamique js</title>
 		<script src="js/jquery/jquery-1.6.4.js" type="text/javascript"></script>
 <!--		<script src="js/crypto/crypto-sha256/crypto-sha256.js"></script>-->
-    	<script src="js/novaappserver.js"  type="text/javascript"></script>		
-		<script src="js/jquery/jquery.mobile-1.0.min.js"  type="text/javascript"></script>
-		<link rel="stylesheet"  href="js/jquery/jquery.mobile-1.0.min.css" />  
+<!--    	<script src="js/novaappserver-1.1.js"  type="text/javascript"></script>		-->
+<!--		<script src="js/jquery/jquery.mobile-1.0.min.js"  type="text/javascript"></script>-->
+<!--		<link rel="stylesheet"  href="js/jquery/jquery.mobile-1.0.min.css" />  -->
 <!--		<script src="js/crypto.pack.js"></script>-->
 
     </head>
@@ -16,11 +16,11 @@
 	<body>
 		<div data-role="page">
 			<div data-role="header">
-				<h1>Test novaapp librairie javascript</h1>
+				<h1>Tests chargement dynamique js</h1>
             </div><!-- /Entete de la page -->
  
             <div data-role="content">
-				<div id="message-json" style="font-size: 18px; color:blue;">Message json</div>	
+				<div id="message-json" style="font-size: 18px; color:blue;"></div>	
 
  
             <div data-role="footer" data-position="fixed">
@@ -33,119 +33,79 @@
 	<script>
 	// Instanciation d'un objet novaappserver
 	jQuery(document).ready(function() {
-
-
-		// Doit être appelé au moins sur la page principale afin de vérifier que l'environnement nécessaire à la librairie soit cohérent
-		try {
-			// Vérification de l'environnement au chargement de cette librairie...
-			novaApp.envOk();
-		}
-		catch (err) {
-			alert("Cette application ne peut actuellement pas fonctionner pour la raison suivante : \"" + err.message + "\". Nous vous prions d'accepter toutes nos excuses.");
-			throw new Error; // Permet d'arréter complètement le script...
-		}
-
-		jQuery("#message-json").html("<h2>Exemple middleware noavaappserver</h2>");
-
-		jQuery("#message-json").append("<h3>version novaApp : " + novaApp.version + "</h3>");
-
-		jQuery("#message-json").append("<h3>Instanciation d'un objet novaApp.domain (synchrone)</h3>");
-
-		// Méthode d'instanciation directe (synchrone)
-		try {
-			var instDomNovaSync = new novaApp.domain("SOLIDIA","S7N7C5");
-		}
-		catch (err) {
-			alert(err.message);
-			throw new Error; // Permet d'arréter complètement le script...
-		}
-
-		jQuery("#message-json").append("<p>instDomNovaSync.login : " + instDomNovaSync.login + "</p>");
-		jQuery("#message-json").append("<p>instDomNovaSync.session : " + instDomNovaSync.session + "</p>");
-		jQuery("#message-json").append("<h3>Fin instanciation d'un objet novaApp.domain (synchrone)</h3>");
-
-		// Méthode d'instanciation indirecte (asynchrone)
-		jQuery("#message-json").append("<h3>Instanciation d'un objet novaApp.domain (asynchrone) ==> L'affichage du résultat doit se trouver beaucoup plus bas...</h3>");
-		novaApp.domainlogin("SOLIDIA","S7N7C5",
-			function(instDomNovaAsync) { // La variable instDomNovaAsync n'est utilisable que à partir du moment où cette function est déclenchée...
-				jQuery("#message-json").append("<h3>L'objet novaApp.domain asynchrone a bien été créé...</h3>");
-				jQuery("#message-json").append("<p>instDomNovaAsync.login : " + instDomNovaAsync.login + "</p>");
-				jQuery("#message-json").append("<p>instDomNovaAsync.session : " + instDomNovaAsync.session + "</p>");
-
-				instDomNovaSync.getLibs( // Ne pas "sortir" ce traitement, sinon, objet non existant...
-					function(ret,data) {
-						jQuery("#message-json").append("<h3>Liste des biblilothèques pour l'objet asynchrone...</h3>");
-						if (ret) {
-							jQuery("#message-json").append("<h4>Résultats OK Requête getLibs (liste des bilbiothèques)</h4>");
-							jQuery("#message-json").append("<p>getLibs: <br />" + novaApp.jsonToString(data) + "</p>");
-						} else {
-							jQuery("#message-json").append("<h4>Résultats KO Requête getLibs (liste des bilbiothèques</h4>");
-							jQuery("#message-json").append("<p>Erreur suivante lors de la requête getLibs: " + data.message  + "<br />" + data.novaErr + "</p>");
-						}
-						jQuery("#message-json").append("<h3>Fin Liste des biblilothèques pour l'objet asynchrone...</h3>");
-					}
-				);
-
-			}
-		); // Fin de novaApp.domainlogin
-
-		jQuery("#message-json").append("<h3>Autres requêtes JSON asynchrones</h3>");
-		instDomNovaSync.getDBDom_infos(
-			function(ret,data) {
-				if (ret) {
-					jQuery("#message-json").append("<h4>Résultats OK Requête getDBDom_infos</h4>");
-					jQuery("#message-json").append("<p>getDBDom_infos: <br />" + novaApp.jsonToString(data) + "</p>");
-				} else {
-					jQuery("#message-json").append("<h4>Résultats KO Requête getDBDom_infos</h4>");
-					jQuery("#message-json").append("<p>Erreur suivante lors de la requête getDBDom_infos: " + data.message  + "<br />" + data.novaErr + "</p>");
-				}
-			}
+		var SCRIPTS_JS = new Array(
+			Array('SHA256','js/crypto/crypto-sha256/crypto-sha256.js','Support de hash SHA256','Crypto.SHA256(\'test\')')
+			,Array('JSON','js/json2.js','Support des fonctions JSON sur les navigateurs obsolètes','JSON.stringify(["e", {pluribus: "unum"}])')
 		);
 
-		instDomNovaSync.getLogLast100(
-			function(ret,data) {
-				if (ret) {
-					jQuery("#message-json").append("<p>getLogLast100 :<br />" + novaApp.jsonToString(data) + "</p>");
-			} else {
-				jQuery("#message-json").append("<p>Erreur suivante lors de la requête getLogLast100 : " + data.message + "<br />" + data.novaErr + "</p>");
+		// Chargement des librairies JS complémentaires à cette librairie
+		if (SCRIPTS_JS.length > 0) { 
+			var ajaxSettings = {
+				// Soit les valeurs par défaut, soit les valeurs préconisées dans notre contexte...
+				// Pas d'évènement ni de converters traité ici pour ne pas compliquer les tests... 
+				accepts: 'text/javascript' // Voir si nécessaire (header)
+				,async: false // Idéalement, devrait être toujous à false car sinon, je n'aurai pas le "temps" de tester avant de lancer les opérations suivantes...
+				,cache: true // Idéalement ceci devrait toujours être True...
+				,contentType: 'application/x-www-form-urlencoded' // Valeur par défaut pouvant éventuellement être modifiée si nécessaire (impact ???)
+				// ,context: // permet d'attacher le résultat à un objet DOM : normalement inutile dans notre contexte
+				//,crossDomain: true // permet de forcer une requête crossdomain même si domaine identique, inutile dans noter contexte
+				//,data: {} // inutile dans notre contexte...
+				,dataType: 'script' // On force en data script (jQuery.ajax utilisé plus loin)
+				,global: true // par défaut
+				//,headers: {} // header complémentaires, normallement inutile dans notre contexte
+				//,ifModified: false // requête OK seulement si les datas ont changées depuis la dernière demande (attention déclenche jQuery.ajax.error même si la requête est Ok...)
+				,isLocal: true // À faire varier en function des tests
+				,scriptCharset: 'UTF-8' // Normallement ce doit être le cas...
+				,timeout: 5000 // 5 secondes
+				,type: 'GET' // par défaut pour les scripts....
+			};
+
+			jQuery("#message-json").append('<p>Options AJAX : ' + JSON.stringify(ajaxSettings) + '</p>'); // Oui, il faut que cette méthode existe déjà ;-)
+			for (var i=0;i<SCRIPTS_JS.length;i++) {
+				// On effectue toujours un test de préchargement, de manière à détecter un chargement initialisé par ailleurs (entête HTML <script...>)
+				if (SCRIPTS_JS[i][3] !='') {
+					try {
+						if (eval(SCRIPTS_JS[i][3])) {;
+							jQuery("#message-json").append('<p>la librairie "' + SCRIPTS_JS[i][0] + ' (' + SCRIPTS_JS[i][2] +') est déjà chargée ou elle est inutile (fonctionnalités directement prises en charge par le navigateur) !<Pp>' );
+							continue; // Eval est Ok, on passe à la libraires suivante...
+						}
+					}
+					catch (err) {}
+				}
+				// Tentative de chargement du script par jQuery.getScript()...
+				jQuery("#message-json").append('<p>Tentative de chargement de la librairie "' + SCRIPTS_JS[i][0] + ' (' + SCRIPTS_JS[i][2] +')"</p>');
+
+				jQuery.ajax(jQuery.extend(
+					ajaxSettings,
+					{
+						url: SCRIPTS_JS[i][1]
+					}
+				))
+				.done(function() {
+					jQuery("#message-json").append('<p>Librairie "' + SCRIPTS_JS[i][0] + ' (' + SCRIPTS_JS[i][2] +') correctement chargée !</p>');
+					try {
+						jQuery("#message-json").append('<p>Test d\'utilisation de la librairie "' + SCRIPTS_JS[i][0] + ' (' + SCRIPTS_JS[i][2] +')" avec l\'expression : "' + SCRIPTS_JS[i][3] + '"...</p>');
+						var result = eval(SCRIPTS_JS[i][3]);
+						jQuery("#message-json").append('<p>Utilisation de la librairie "' + SCRIPTS_JS[i][0] + ' (' + SCRIPTS_JS[i][2] +')" OK (résulat de l\'expression : "' + result + '") !</p>');
+					}
+					catch(err) {
+						jQuery("#message-json").append('<p>Utilisation de la librairie "' + SCRIPTS_JS[i][0] + ' (' + SCRIPTS_JS[i][2] +')" KO avec l\'erreur suivante<br />' + err.message + '!</p>');
+						throw new Error();
+						return false;
+					}
+					return true;
+						
+				})
+				.fail(function(jqxhr, settings, exception) {
+					jQuery("#message-json").append('<p>Erreur lors du chargement de la librairie"' + SCRIPTS_JS[i][0] + ' (' + SCRIPTS_JS[i][2] +') - URI : "' + SCRIPTS_JS[i][1] + '" avec l\'erreur suivante : <br />' + 'status : ' + jqxhr.statusText + ' (' + jqxhr.status +  ') - readystate : ' + jqxhr.readyState + ' - erreur : ' + exception + '</p>');
+					throw new Error();
+					return false;
+				});
 			}
-			});
-
-		jQuery("#message-json").append("<h4>Lancement du test de timeout (le résultat devrait s'afficher beaucoup plus tard)</h4>");
-		instDomNovaSync.testtimeout(
-			function(ret,data) {
-				if (ret) {
-					jQuery("#message-json").append("<p>testtimeout :<br />" + novaApp.jsonToString(data) + "</p>");
-			} else {
-				jQuery("#message-json").append("<p>Erreur suivante lors de la requête testtimeout :<br />Message \"humain\" : " + data.message + "<br />Message technique : " + data.novaErr + "</p>");
-			}
-			});
-
-		instDomNovaSync.testErr404(
-			function(ret,data) {
-				if (ret) {
-					jQuery("#message-json").append("<p>testErr404 :<br />" + novaApp.jsonToString(data) + "</p>");
-			} else {
-				jQuery("#message-json").append("<p>Erreur suivante lors de la requête testErr404 :<br />Message \"humain\" : " + data.message + "<br />Message technique : " + data.novaErr + "</p>");
-			}
-			});
-
-		instDomNovaSync.testErr500(
-			function(ret,data) {
-				if (ret) {
-					jQuery("#message-json").append("<p>testErr500 :<br />" + novaApp.jsonToString(data) + "</p>");
-			} else {
-				jQuery("#message-json").append("<p>Erreur suivante lors de la requête testErr500 :<br />Message \"humain\" : " + data.message + "<br />Message technique : " + data.novaErr + "</p>");
-			}
-			});
-
-
-
-		jQuery("#message-json").append("<h2>Fin des tests (doit apparaitre sur le navigateur bien avant les autres résultats pour cause de flux JSON asynchrones)</h2>");
-
+		}
 	});
+
 	</script>	
 	
 	</body>
 </html>
-

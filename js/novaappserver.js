@@ -12,7 +12,10 @@ if (typeof novaApp == "undefined" ) {
 
 (function () {
  
-	novaApp.version = 1;
+	var version = "1";
+	
+	// Type de session possible (connection à l'API serveur)
+	SESSION_TYPE = [ 'domain','user'];
 	
 	// Version min. de jQuery requise (privée)
 	var VER_JQ_MIN =  '1.6';
@@ -55,16 +58,21 @@ if (typeof novaApp == "undefined" ) {
 		SERVICE : novaApp.NAS_URL + '/service'
 	};
 	
-	// Type de session possible (connection à l'API serveur)
-	novaApp.SESSION_TYPE = [ 'domain','user'];
-
 	// timeout par défaut pour les requêtes http (ajax)
 	novaApp.HTTP_REQ_TIMEOUT = 5000;
  
 	/*
 	 * Méthodes publiques
 	 */
-		
+
+	/*
+	 * Version de l'application
+	 */
+	novaApp.getVersion = function () {
+		return version;
+	}
+	
+	
 	/*
 	 * A appeler au chargement, on vérifie l'environnement d'exploitaiton...
 	 * Attention, ici on lève des erreurs (try/catch chez l'appelant)
@@ -76,7 +84,8 @@ if (typeof novaApp == "undefined" ) {
 				throw {
 					name: "JQuery absent",
 					message: "Impossible de charger la bibliothèque jQuery nécessaire à cette librairie"
-				};
+				}
+				return false;
 			}
 			
 			// Version jQuery Ok ?
@@ -88,12 +97,17 @@ if (typeof novaApp == "undefined" ) {
 					name: 'Erreur de version jQuery',
 					message: "La version de la librairie jQuery chargée (" + jq_ver + ") n'est pas compatible avec une version requise pour cette librairie (jQuery version >= " + novaApp.VER_JQ_MIN + ") !"
 				}
+				return false;
 			}
 		}
 		
 		catch(err) {
-			alert(err.name + " : " + err.message);
-			novaApp.LogDEBUG(err.name + " : " + err.message);
+			novaApp.LogDEBUG('Erreur lors du chargement d ela librairie jQuery : "' + err.message + '"');
+			throw {
+				name: "JQuery absent",
+				message: "Impossible de charger la bibliothèque jQuery nécessaire à cette librairie"
+			}
+			return false;
 		};
 		
 		
@@ -123,12 +137,14 @@ if (typeof novaApp == "undefined" ) {
 						catch(err) {
 							novaApp.LogDEBUG(err.name + " : " + err.message + 'lors du test de chargement de la librairie : ' + SCRIPTS_JS[i][0] + ' : ' + SCRIPTS_JS[i][2] );
 							throw new Error('La librairie "' + SCRIPTS_JS[i][0] + '" - (' + SCRIPTS_JS[i][1] + ') a bien été chargée, mais elle est inexploitable');
+							return false;
 						}
 						
 				})
 				.fail(function(jqxhr, settings, exception) {
 						novaApp.LogDEBUG('librairie ' + SCRIPTS_JS[i][1] + ' non chargée');
 						throw new Error('librairie ' + SCRIPTS_JS[i][1] + ' non chargée');
+						return false;
 				});
 			}
 		}
@@ -136,11 +152,12 @@ if (typeof novaApp == "undefined" ) {
 		// TODO : Cookies actif (vérifier si applicable pour "httponly")
 		if (! navigator.cookieEnabled) {
 			throw new Error('Les cookies doivent être activés pour utiliser cette application');
+			return false;
 		}
 
 		// ping server (le ping est anonyme sur le serveur)
 		// TODO : désactiver pour tests sur Apache....
-/*		var ret = novaApp.getDataNAS(novaApp.NAS_URIS.SERVICE + '/ping', {},{async: false});
+		var ret = novaApp.getDataNAS(novaApp.NAS_URIS.SERVICE + '/ping', {},{async: false});
 		ret.success(function(data, status, jqXHR) {
 			if (jqXHR.hasOwnProperty('errJSON')) {
 				novaApp.LogDEBUG('Erreur dans le Flux : ping KO : ' + jqXHR.errJSON.novaErr);
@@ -152,7 +169,9 @@ if (typeof novaApp == "undefined" ) {
 		ret.error(function(jqXHR) {
 			novaApp.LogDEBUG('Ping du serveur KO : ' + jqXHR.errJSON.novaErr);
 			throw new Error('L\'erreur suivante s\'est produite lors de la connexion de test au serveur : "' + jqXHR.errJSON.message + '"');
-		});*/
+			return false;
+		});
+		return true;
 		
 	}; // Fin novaApp.envOk
 	
@@ -357,7 +376,7 @@ if (typeof novaApp == "undefined" ) {
 		if (
 			typeof login == 'undefined' || 
 			typeof password == 'undefined' 
-			|| novaApp.SESSION_TYPE.indexOf(jQuery.trim(typeSession)) == -1 
+			|| SESSION_TYPE.indexOf(jQuery.trim(typeSession)) == -1 
 		) { // Paramètres incorrects
 			throw new Error('Vous devez vous authentifier pour utiliser une instance de cet objet');
 			
