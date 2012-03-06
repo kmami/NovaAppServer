@@ -33,7 +33,9 @@ if (typeof novaApp == "undefined" ) {
 	 */
 	var SCRIPTS_JS = new Array(
 		Array('SHA256','js/crypto/crypto-sha256/crypto-sha256.js','Support de hash SHA256','Crypto.SHA256(\'test\')')
-		,Array('JSON','js/json2.js','Support des fonctions JSON sur les navigateurs obsolètes','JSON.stringify(\'test\')')
+		,Array('JSON','js/json2.js','Support des fonctions JSON sur les navigateurs obsolètes','JSON.stringify([\'test\'])')
+		,Array('AES256','js/crypto/crypto-sha1-hmac-pbkdf2-blockmodes-aes/crypto-sha1-hmac-pbkdf2-blockmodes-aes.js','Support de AES 256','Crypto.AES.encrypt("Message", "Secret Passphrase");')
+		
 		// TODO : ,Array('mockjax','js/appendto-jquery-mockjax/jquery.mockjax.js','Librairie de test unitaires ajax mockjax (DEBUG seulement)',' !novaApp.DEBUG && jQuery.mockjax({log:\'test mock\'})')
 	);
 
@@ -150,44 +152,64 @@ if (typeof novaApp == "undefined" ) {
 		
 		// Chargement des librairies JS complémentaires à cette librairie
 		if (SCRIPTS_JS.length > 0) { 
-			jQuery.ajaxSetup({
-				cache: true, // Ne pas modifier, manifestement certaines tablettes n'apprécient pas qu'i n'y ait pas de cache (cf. recherche KM sur Galaxy Tab android 3.X)
-				async: false
-			});
+			ajaxSettings = {
+				accepts: 'text/javascript' // Voir si nécessaire (header)
+				,async: false // Idéalement, devrait être toujous à false car sinon, je n'aurai pas le "temps" de tester avant de lancer les opérations suivantes...
+				,cache: true // Idéalement ceci devrait toujours être True...
+				,contentType: 'application/x-www-form-urlencoded' // Valeur par défaut pouvant éventuellement être modifiée si nécessaire (impact ???)
+				// ,context: // permet d'attacher le résultat à un objet DOM : normalement inutile dans notre contexte
+				//,crossDomain: true // permet de forcer une requête crossdomain même si domaine identique, inutile dans noter contexte
+				//,data: {} // inutile dans notre contexte...
+				,dataType: 'script' // On force en data script (jQuery.ajax utilisé plus loin)
+				,global: true // par défaut
+				//,headers: {} // header complémentaires, normallement inutile dans notre contexte
+				//,ifModified: false // requête OK seulement si les datas ont changées depuis la dernière demande (attention déclenche jQuery.ajax.error même si la requête est Ok...)
+				,isLocal: true // À faire varier en function des tests
+				,scriptCharset: 'UTF-8' // Normallement ce doit être le cas...
+				,timeout: 5000 // 5 secondes
+				,type: 'GET' // par défaut pour les scripts....
+			};
 			for (var i=0;i<SCRIPTS_JS.length;i++) {
 				// On effectue toujours un test de préchargement, de manière à détecter un chargement initialisé par ailleurs (entête HTML <script...>)
 				if (SCRIPTS_JS[i][3] !='') {
 					try {
-						if (eval(SCRIPTS_JS[i][3])) {;
+						if (eval(SCRIPTS_JS[i][3])) {
+							novaApp.LogDEBUG('la librairie "' + SCRIPTS_JS[i][0] + ' (' + SCRIPTS_JS[i][2] +') est déjà chargée ou elle est inutile (fonctionnalités directement prises en charge par le navigateur)');
 							continue; // Eval est Ok, on passe à la libraires suivante...
 						}
 					}
 					catch (err) {}
+						// Prise en charge par la requête AJAX de chargement....
 				}
 				// Tentative de chargement du script par jQuery.getScript()...
-				jQuery.getScript(SCRIPTS_JS[i][1])
+				jQuery.ajax(jQuery.extend(
+					ajaxSettings,
+					{
+						url: SCRIPTS_JS[i][1]
+					}
+				))
 				.done(function() {
-						novaApp.LogDEBUG('librairie ' + SCRIPTS_JS[i][0] + ' chargée')
-						try {
-							eval(SCRIPTS_JS[i][3]);
-							novaApp.LogDEBUG('test du chargement positif à l\'aide de l\'instruction : ' + SCRIPTS_JS[i][3]);
-						}
-						catch(err) {
-							novaApp.LogDEBUG(err.name + " : " + err.message + 'lors du test de chargement de la librairie : ' + SCRIPTS_JS[i][0] + ' : ' + SCRIPTS_JS[i][2] );
-							throw new Error('La librairie "' + SCRIPTS_JS[i][0] + '" - (' + SCRIPTS_JS[i][1] + ') a bien été chargée, mais elle est inexploitable');
-							return false;
-						}
+					novaApp.LogDEBUG('Librairie "' + SCRIPTS_JS[i][0] + ' (' + SCRIPTS_JS[i][2] +') correctement chargée');
+					try {
+						novaApp.LogDEBUG('Test d\'utilisation de la librairie "' + SCRIPTS_JS[i][0] + ' (' + SCRIPTS_JS[i][2] +')" avec l\'expression : "' + SCRIPTS_JS[i][3] + '"...');
+						var result = eval(SCRIPTS_JS[i][3]);
+						novaApp.LogDEBUG('Utilisation de la librairie "' + SCRIPTS_JS[i][0] + ' (' + SCRIPTS_JS[i][2] +')" OK (résulat de l\'expression : "' + result + '")');
+					}
+					catch(err) {
+						novaApp.LogDEBUG('Utilisation de la librairie "' + SCRIPTS_JS[i][0] + ' (' + SCRIPTS_JS[i][2] +')" KO avec l\'erreur suivante : '  + err.message);
+						throw new Error('La librairie "' + SCRIPTS_JS[i][0] + '" - (' + SCRIPTS_JS[i][1] + ') a bien été chargée, mais elle est inexploitable');
+						return false;
+					}
 					return true;
-						
 				})
 				.fail(function(jqxhr, settings, exception) {
-						novaApp.LogDEBUG('librairie ' + SCRIPTS_JS[i][1] + ' non chargée');
-						throw new Error('librairie ' + SCRIPTS_JS[i][1] + ' non chargée');
-						return false;
+					novaApp.LogDEBUG('Erreur lors du chargement de la librairie"' + SCRIPTS_JS[i][0] + ' (' + SCRIPTS_JS[i][2] +') - URI : "' + SCRIPTS_JS[i][1] + '" avec l\'erreur suivante : ' + 'status : ' + jqxhr.statusText + ' (' + jqxhr.status +  ') - readystate : ' + jqxhr.readyState + ' - erreur : ' + exception);
+					throw new Error('librairie ' + SCRIPTS_JS[i][1] + ' non chargée');
+					return false;
 				});
 			}
 		}
-
+		
 		// TODO : Cookies actif (vérifier si applicable pour "httponly")
 		if (! navigator.cookieEnabled) {
 			throw new Error('Les cookies doivent être activés pour utiliser cette application');
@@ -507,9 +529,9 @@ if (typeof novaApp == "undefined" ) {
 				return false;
 			}
 			
-				novaApp.LogDEBUG('retour sendLog OK');
-				callback(true, data[JSON_ENV['results']].owners)
-				return true;
+			novaApp.LogDEBUG('retour sendLog OK');
+			callback(true, data[JSON_ENV['results']])
+			return true;
 		});
 	 
 		ret.fail(function(jqXHR) {
